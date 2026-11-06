@@ -45,3 +45,31 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check website DNS and HTTPS from an external runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Public IPv4 address records:"
+          getent ahostsv4 steez8.me || true
+          echo "Public IPv6 address records:"
+          getent ahostsv6 steez8.me || true
+          for attempt in 1 2 3; do
+            if curl -L -4 --fail --silent --show-error --connect-timeout 12 --max-time 30 https://steez8.me/ -o /tmp/steez8.html; then
+              size=$(wc -c < /tmp/steez8.html)
+              echo "HTTPS response received, $size bytes"
+              test "$size" -gt 5000
+              exit 0
+            fi
+            echo "HTTPS reachability attempt $attempt failed"
+            sleep 8
+          done
+          echo "::error::Public HTTPS site could not be reached from this runner"
+          exit 1
+      - name: Inspect game backend health
+        continue-on-error: true
+        run: |
+          curl -4 --silent --show-error --connect-timeout 12 --max-time 45 https://steez8-api.onrender.com/api/health
