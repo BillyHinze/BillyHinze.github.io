@@ -41,5 +41,16 @@ jobs:
             dig +time=3 +tries=1 @"${ns}" steez8.me AAAA +noall +answer || true
             dig +time=3 +tries=1 @"${ns}" www.steez8.me CNAME +noall +answer || true
           done
+      - name: Diagnose www HTTPS certificate and redirect
+        shell: bash
+        run: |
+          # This is a read-only diagnostic for the site's public certificate.
+          # DNS is already correct; a curl SSL error distinguishes issuance
+          # delays from a redirect/configuration failure.
+          if curl -fsSI --max-time 15 --connect-timeout 7 https://www.steez8.me/; then
+            echo "www HTTPS endpoint responded successfully"
+          else
+            echo "::warning::www HTTPS is not yet responding with a valid TLS certificate and successful status"
+          fi
       - name: Test IPv4, IPv6, www redirect and multiplayer across six continents
         run: node scripts/audit-global-reachability.mjs
