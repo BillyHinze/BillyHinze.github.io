@@ -1,0 +1,32 @@
+name: Check STEEZ8 worldwide reachability
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/global-reachability.yml']
+  schedule:
+    # Four modest global measurements per day. This is diagnostics, not a keep-alive.
+    - cron: '43 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steez8-global-reachability
+  cancel-in-progress: true
+
+jobs:
+  global-network:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: BillyHinze/steez8
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Test DNS and HTTPS from six continents
+        run: node scripts/audit-global-reachability.mjs
