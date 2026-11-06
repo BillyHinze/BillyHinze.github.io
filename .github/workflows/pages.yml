@@ -1,4 +1,4 @@
-name: Publish steez8.me
+name: Publish STEEZ8
 on:
   push:
     branches: [main]
@@ -47,6 +47,7 @@ jobs:
       - run: pnpm run build:pages
         env:
           BACKEND_ORIGIN: https://steez8-api.onrender.com
+          PUBLIC_SITE_ORIGIN: https://novacryptotool.com
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -73,3 +74,5 @@ jobs:
           node-version: 24
       - name: Check public DNS, HTTPS, essential assets, backend and WebSockets
         run: node scripts/check-public-site.mjs
+        env:
+          PUBLIC_SITE_ORIGIN: https://novacryptotool.com
