@@ -1,0 +1,29 @@
+name: Monitor STEEZ8 public availability
+
+on:
+  schedule:
+    # Four independent checks a day, not a 24/7 keep-alive loop.
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: steez8-availability-monitor
+  cancel-in-progress: true
+
+jobs:
+  public-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: BillyHinze/steez8
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify public DNS, HTTPS, static assets, API and WebSocket
+        run: node scripts/check-public-site.mjs
