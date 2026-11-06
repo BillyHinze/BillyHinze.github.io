@@ -28,5 +28,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Test website, multiplayer API and DNS from six continents
+      - name: Test IPv4, IPv6, www redirect and multiplayer across six continents
         run: node scripts/audit-global-reachability.mjs
