@@ -28,5 +28,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Inspect authoritative DNS instead of only cached recursive answers
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v dig >/dev/null 2>&1; then
+            echo "::warning::dig is unavailable on the runner; skipping authoritative DNS check"
+            exit 0
+          fi
+          for ns in $(dig +short steez8.me NS); do
+            echo "### Authoritative DNS: ${ns}"
+            dig +time=3 +tries=1 @"${ns}" steez8.me AAAA +noall +answer || true
+            dig +time=3 +tries=1 @"${ns}" www.steez8.me CNAME +noall +answer || true
+          done
       - name: Test IPv4, IPv6, www redirect and multiplayer across six continents
         run: node scripts/audit-global-reachability.mjs
