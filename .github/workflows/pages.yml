@@ -14,11 +14,26 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.release.outputs.sha }}
     steps:
+      - uses: actions/checkout@v4
+      - name: Pin STEEZ8 source to the release marker
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA=$(awk '$1 == "Commit:" { print $2 }' source-revision.txt)
+          if [[ ! "$SHA" =~ ^[a-f0-9]{40}$ ]]; then
+            echo '::error::source-revision.txt must contain a 40-digit lowercase SHA'
+            exit 1
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Publishing STEEZ8 source: $SHA"
       - uses: actions/checkout@v4
         with:
           repository: BillyHinze/steez8
-          ref: main
+          ref: ${{ steps.release.outputs.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -46,13 +61,13 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
   verify:
-    needs: deploy
+    needs: [build, deploy]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           repository: BillyHinze/steez8
-          ref: main
+          ref: ${{ needs.build.outputs.source_sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
