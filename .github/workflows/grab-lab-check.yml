@@ -48,7 +48,7 @@ jobs:
           assert(poseSource.includes('controller.skiRotation(side'), 'Custom ski rotation missing');
           const animationResponse=await fetch(site+'/_next/static/chunks/rider-animation-1mQglCn7.js?verify='+Date.now(),{signal:AbortSignal.timeout(30000)});
           const animation=await animationResponse.text();
-          assert(animation.includes('sigGrab(this,this.grabStyle,this.grab,n.airTime)'),'3D body posing not connected');
+          assert(animation.includes('sigGrab(this,this.grabStyle,this.grab,signatureAirTime)'),'3D body posing not connected');
           assert(animation.includes('sigReach(this.grabContact,this.grabStyle,this.grab,e)'),'Hand-to-ski IK not connected');
           assert(!animation.includes('`TailGrab`,`TailGrab`,`JapanGrab`,`JapanGrab`'),'Old duplicate grabs remain');
           console.log('LIVE all four unique grab rigs and mesh-anchored grip IK VERIFIED');
