@@ -44,6 +44,16 @@ jobs:
           assert(lockerCode.includes('window.addEventListener(\`steez8:preview-grab\`,previewGrab);let P=new h('),'Locker preview fix not live');
           assert(!lockerCode.includes('window.addEventListener(\`steez8:preview-grab\`,previewGrab),P='),'Broken Locker preview module remains live');
           console.log('LIVE Locker preview crash regression PASSED');
+          const labResponse=await fetch(site+'/grab-studio.js?portal='+Date.now(),{signal:AbortSignal.timeout(30000)});
+          assert.equal(labResponse.status,200,'Custom Grab Studio is missing');
+          const labSource=await labResponse.text();
+          assert(labSource.includes('document.body.append(portal)'),'The isolated Grab Lab release has not reached production');
+          assert(labSource.includes('portal.querySelector(".gl-status")'),'Grab Lab must not mutate React controls');
+          assert(!labSource.includes('host.prepend(bar)'),'Old Locker-mutating Grab Lab is still live');
+          const cssResponse=await fetch(site+'/grab-studio.css?portal='+Date.now(),{signal:AbortSignal.timeout(30000)});
+          assert.equal(cssResponse.status,200,'Grab Lab styles are missing');
+          assert((await cssResponse.text()).includes('.gl-root[hidden]'),'Standalone portal styles are not yet live');
+          console.log('LIVE isolated Grab Lab portal and styles VERIFIED');
           for(const method of ['GET','POST']) {
             const response=await fetch(api+'/api/grab-loadout',{
               method,
