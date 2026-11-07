@@ -1,0 +1,55 @@
+name: Verify STEEZ8 Grab Lab
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/grab-lab-check.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-grab-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify public 3D, grab scripts and protected account API
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const site='https://novacryptotool.com';
+          const api='https://steez8-api.onrender.com';
+          for(const [path,expected] of [
+            ['/','STEEZ8'],
+            ['/independent.js','startGrabStudio'],
+            ['/grab-studio.js','/api/grab-loadout'],
+            ['/grab-presets.js','Back Scratcher'],
+            ['/grab-studio.css','.gl-panel'],
+            ['/_next/static/chunks/engine-Dlp-9Jq2.js','__steez8GrabActiveSlots'],
+            ['/_next/static/chunks/rider-animation-1mQglCn7.js','Back Scratcher'],
+            ['/_next/static/chunks/active-course-BUb4R-L7.js','TRUE NOSE GRAB'],
+          ]) {
+            const response=await fetch(site+path+'?grab-lab-smoke='+Date.now(),{signal:AbortSignal.timeout(30000)});
+            assert.equal(response.status,200,path+' returned '+response.status);
+            const text=await response.text();
+            assert(text.includes(expected),path+' is stale or missing '+expected);
+            console.log('LIVE',path,response.status,'verified');
+          }
+          for(const method of ['GET','POST']) {
+            const response=await fetch(api+'/api/grab-loadout',{
+              method,
+              headers:{Origin:site,...(method==='POST'?{'Content-Type':'application/json'}:{})},
+              ...(method==='POST'?{body:'{}'}:{}),
+              signal:AbortSignal.timeout(30000),
+            });
+            assert.equal(response.status,401,'Protected '+method+' endpoint must require authentication');
+            assert.equal(response.headers.get('access-control-allow-origin'),site,'CORS origin mismatch');
+            const body=await response.json();
+            assert.match(body.error||'',/auth/i);
+            console.log('LIVE',method,'/api/grab-loadout',response.status,'with valid origin CORS');
+          }
+          console.log('STEEZ8 Grab Lab production script, physics, 3D and API verification PASSED');
+          NODE
