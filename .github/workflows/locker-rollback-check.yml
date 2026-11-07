@@ -1,0 +1,39 @@
+name: Verify STEEZ8 Locker recovery
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/locker-rollback-check.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Confirm working Locker module is publicly deployed
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const base='https://novacryptotool.com';
+          const pages=['/','/_next/static/chunks/rider-locker-BYJrrxbD.js'];
+          for (const path of pages) {
+            const response=await fetch(base+path+'?rollback='+Date.now(),{signal:AbortSignal.timeout(25000),cache:'no-store'});
+            assert.equal(response.status,200,path+' is not live');
+            const text=await response.text();
+            if (path==='/') assert(text.includes('STEEZ8'),'Wrong website');
+            else {
+              assert(text.includes('bc-rider-stage'),'Original Locker preview missing');
+              assert(!text.includes('steez8:preview-grab'),'A stale Grab Lab Locker module is still being served');
+              console.log('Restored pre-Grab-Lab Locker module confirmed');
+            }
+            console.log('LIVE',path,response.status,'verified');
+          }
+          const noGrabLab=await fetch(base+'/grab-studio.js?rollback='+Date.now(),{signal:AbortSignal.timeout(25000),cache:'no-store'});
+          assert.equal(noGrabLab.status,404,'Grab Lab should not be active during the safe rollback');
+          console.log('Safe rollback live: no Grab Lab script is served');
+          NODE
