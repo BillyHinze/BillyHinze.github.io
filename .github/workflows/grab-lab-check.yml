@@ -38,6 +38,12 @@ jobs:
             assert(text.includes(expected),path+' is stale or missing '+expected);
             console.log('LIVE',path,response.status,'verified');
           }
+          const locker=await fetch(site+'/_next/static/chunks/rider-locker-BYJrrxbD.js?locker-hotfix='+Date.now(),{signal:AbortSignal.timeout(30000)});
+          assert.equal(locker.status,200,'Locker 3D module unavailable');
+          const lockerCode=await locker.text();
+          assert(lockerCode.includes('window.addEventListener(\`steez8:preview-grab\`,previewGrab);let P=new h('),'Locker preview fix not live');
+          assert(!lockerCode.includes('window.addEventListener(\`steez8:preview-grab\`,previewGrab),P='),'Broken Locker preview module remains live');
+          console.log('LIVE Locker preview crash regression PASSED');
           for(const method of ['GET','POST']) {
             const response=await fetch(api+'/api/grab-loadout',{
               method,
