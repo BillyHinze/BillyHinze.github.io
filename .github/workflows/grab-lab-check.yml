@@ -28,8 +28,9 @@ jobs:
             ['/grab-studio.js','/api/grab-loadout'],
             ['/grab-presets.js','Back Scratcher'],
             ['/grab-studio.css','.gl-panel'],
+            ['/signature-grab-poses.js','applySignatureGrabPose'],
             ['/_next/static/chunks/engine-Dlp-9Jq2.js','__steez8GrabActiveSlots'],
-            ['/_next/static/chunks/rider-animation-1mQglCn7.js','Back Scratcher'],
+            ['/_next/static/chunks/rider-animation-1mQglCn7.js','sigReach(this.grabContact'],
             ['/_next/static/chunks/active-course-BUb4R-L7.js','TRUE NOSE GRAB'],
           ]) {
             const response=await fetch(site+path+'?grab-lab-smoke='+Date.now(),{signal:AbortSignal.timeout(30000)});
@@ -38,6 +39,19 @@ jobs:
             assert(text.includes(expected),path+' is stale or missing '+expected);
             console.log('LIVE',path,response.status,'verified');
           }
+          const poseResponse=await fetch(site+'/signature-grab-poses.js?verify='+Date.now(),{signal:AbortSignal.timeout(30000)});
+          const poseSource=await poseResponse.text();
+          for (const name of ['Blunt','Rocket Air','True Nose','Back Scratcher']) {
+            assert(poseSource.includes('"'+name+'"'), 'Original grab pose missing: '+name);
+          }
+          assert(poseSource.includes('contact.aim(chain.arm'), 'Hand-on-ski IK unavailable');
+          assert(poseSource.includes('controller.skiRotation(side'), 'Custom ski rotation missing');
+          const animationResponse=await fetch(site+'/_next/static/chunks/rider-animation-1mQglCn7.js?verify='+Date.now(),{signal:AbortSignal.timeout(30000)});
+          const animation=await animationResponse.text();
+          assert(animation.includes('sigGrab(this,this.grabStyle,this.grab,n.airTime)'),'3D body posing not connected');
+          assert(animation.includes('sigReach(this.grabContact,this.grabStyle,this.grab,e)'),'Hand-to-ski IK not connected');
+          assert(!animation.includes('`TailGrab`,`TailGrab`,`JapanGrab`,`JapanGrab`'),'Old duplicate grabs remain');
+          console.log('LIVE all four unique grab rigs and mesh-anchored grip IK VERIFIED');
           const locker=await fetch(site+'/_next/static/chunks/rider-locker-BYJrrxbD.js?locker-hotfix='+Date.now(),{signal:AbortSignal.timeout(30000)});
           assert.equal(locker.status,200,'Locker 3D module unavailable');
           const lockerCode=await locker.text();
