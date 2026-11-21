@@ -69,7 +69,7 @@ jobs:
           DATABASE_DRIVER: libsql
       - run: pnpm run build:pages
         env:
-          BACKEND_ORIGIN: https://steez8-api.onrender.com
+          BACKEND_ORIGIN: https://api.steez8.me
           PUBLIC_SITE_ORIGIN: https://steez8.me
       - name: Confirm canonical domain is restored in build
         run: |

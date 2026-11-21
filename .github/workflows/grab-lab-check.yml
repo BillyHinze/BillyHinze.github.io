@@ -21,7 +21,7 @@ jobs:
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           const site='https://steez8.me';
-          const api='https://steez8-api.onrender.com';
+          const api='https://api.steez8.me';
           const live=async path=>{
             const response=await fetch(site+path+(path.includes('?')?'&':'?')+'grab-lab-smoke='+Date.now(),{signal:AbortSignal.timeout(30000),cache:'no-store'});
             assert.equal(response.status,200,path+' returned '+response.status);
