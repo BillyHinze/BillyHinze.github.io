@@ -12,16 +12,21 @@ permissions:
 jobs:
   live-grab-lab:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
-      - name: Verify public 3D, grab scripts and protected account API
+      - name: Verify public Grab Lab, signature grab animation and protected API
         shell: bash
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
-          const site='https://novacryptotool.com';
+          const site='https://steez8.me';
           const api='https://steez8-api.onrender.com';
+          const live=async path=>{
+            const response=await fetch(site+path+(path.includes('?')?'&':'?')+'grab-lab-smoke='+Date.now(),{signal:AbortSignal.timeout(30000),cache:'no-store'});
+            assert.equal(response.status,200,path+' returned '+response.status);
+            return response.text();
+          };
           for(const [path,expected] of [
             ['/','STEEZ8'],
             ['/independent.js','startGrabStudio'],
@@ -30,56 +35,50 @@ jobs:
             ['/grab-studio.css','.gl-panel'],
             ['/signature-grab-poses.js','applySignatureGrabPose'],
             ['/_next/static/chunks/engine-Dlp-9Jq2.js','__steez8GrabActiveSlots'],
-            ['/_next/static/chunks/rider-animation-1mQglCn7.js','sigReach(this.grabContact'],
             ['/_next/static/chunks/active-course-BUb4R-L7.js','TRUE NOSE GRAB'],
           ]) {
-            const response=await fetch(site+path+'?grab-lab-smoke='+Date.now(),{signal:AbortSignal.timeout(30000)});
-            assert.equal(response.status,200,path+' returned '+response.status);
-            const text=await response.text();
-            assert(text.includes(expected),path+' is stale or missing '+expected);
-            console.log('LIVE',path,response.status,'verified');
+            assert((await live(path)).includes(expected),path+' is stale or missing '+expected);
+            console.log('LIVE',path,'verified');
           }
-          const poseResponse=await fetch(site+'/signature-grab-poses.js?verify='+Date.now(),{signal:AbortSignal.timeout(30000)});
-          const poseSource=await poseResponse.text();
-          for (const name of ['Blunt','Rocket Air','True Nose','Back Scratcher']) {
-            assert(poseSource.includes('"'+name+'"'), 'Original grab pose missing: '+name);
-          }
-          assert(poseSource.includes('contact.aim(chain.arm'), 'Hand-on-ski IK unavailable');
-          assert(poseSource.includes('controller.skiRotation(side'), 'Custom ski rotation missing');
-          const animationResponse=await fetch(site+'/_next/static/chunks/rider-animation-1mQglCn7.js?verify='+Date.now(),{signal:AbortSignal.timeout(30000)});
-          const animation=await animationResponse.text();
-          assert(animation.includes('sigGrab(this,this.grabStyle,this.grab,signatureAirTime)'),'3D body posing not connected');
-          assert(animation.includes('sigReach(this.grabContact,this.grabStyle,this.grab,e)'),'Hand-to-ski IK not connected');
-          assert(!animation.includes('`TailGrab`,`TailGrab`,`JapanGrab`,`JapanGrab`'),'Old duplicate grabs remain');
-          console.log('LIVE all four unique grab rigs and mesh-anchored grip IK VERIFIED');
-          const locker=await fetch(site+'/_next/static/chunks/rider-locker-BYJrrxbD.js?locker-hotfix='+Date.now(),{signal:AbortSignal.timeout(30000)});
-          assert.equal(locker.status,200,'Locker 3D module unavailable');
-          const lockerCode=await locker.text();
-          assert(lockerCode.includes('window.addEventListener(\`steez8:preview-grab\`,previewGrab);let P=new h('),'Locker preview fix not live');
-          assert(!lockerCode.includes('window.addEventListener(\`steez8:preview-grab\`,previewGrab),P='),'Broken Locker preview module remains live');
+          const poses=await live('/signature-grab-poses.js');
+          for (const name of ['Blunt','Rocket Air','True Nose','Back Scratcher'])
+            assert(poses.includes('"'+name+'"'),'Signature grab pose missing: '+name);
+          assert(poses.includes('controller.skiRotation(side'),'Signature ski rotation missing');
+          assert(poses.includes('export function stabilizeSignaturePoles'),'Signature pole stabilizer missing');
+
+          // Current design (STEEZ8 #25): authored body/arm overlay applied after the
+          // smoothing baseline is saved, single pole owner, and NO second hand-to-ski
+          // IK pass on top of the authored arms.
+          const animation=await live('/_next/static/chunks/rider-animation-1mQglCn7.js');
+          assert(animation.includes('sigGrab(this,this.grabStyle,this.grab,signatureAirTime)'),'Signature body pose not connected');
+          assert(animation.includes('sigPoles(this,this.grabStyle'),'Signature pole stabilizer not connected');
+          assert(!animation.includes('sigReach('),'Unstable second arm IK pass has returned');
+          assert(!animation.includes('`TailGrab`,`TailGrab`,`JapanGrab`,`JapanGrab`'),'Old duplicate grab clips remain');
+          console.log('LIVE signature grab animation wiring VERIFIED');
+
+          const locker=await live('/_next/static/chunks/rider-locker-BYJrrxbD.js');
+          assert(locker.includes('window.addEventListener(`steez8:preview-grab`,previewGrab);let P=new h('),'Locker preview fix not live');
+          assert(!locker.includes('window.addEventListener(`steez8:preview-grab`,previewGrab),P='),'Broken Locker preview module is live');
           console.log('LIVE Locker preview crash regression PASSED');
-          const labResponse=await fetch(site+'/grab-studio.js?portal='+Date.now(),{signal:AbortSignal.timeout(30000)});
-          assert.equal(labResponse.status,200,'Custom Grab Studio is missing');
-          const labSource=await labResponse.text();
-          assert(labSource.includes('document.body.append(portal)'),'The isolated Grab Lab release has not reached production');
-          assert(labSource.includes('portal.querySelector(".gl-status")'),'Grab Lab must not mutate React controls');
-          assert(!labSource.includes('host.prepend(bar)'),'Old Locker-mutating Grab Lab is still live');
-          const cssResponse=await fetch(site+'/grab-studio.css?portal='+Date.now(),{signal:AbortSignal.timeout(30000)});
-          assert.equal(cssResponse.status,200,'Grab Lab styles are missing');
-          assert((await cssResponse.text()).includes('.gl-root[hidden]'),'Standalone portal styles are not yet live');
+
+          const lab=await live('/grab-studio.js');
+          assert(lab.includes('document.body.append(portal)'),'Isolated Grab Lab portal is not live');
+          assert(lab.includes('portal.querySelector(".gl-status")'),'Grab Lab must not mutate React controls');
+          assert(!lab.includes('host.prepend(bar)'),'Old Locker-mutating Grab Lab is live');
+          assert((await live('/grab-studio.css')).includes('.gl-root[hidden]'),'Standalone portal styles are not live');
           console.log('LIVE isolated Grab Lab portal and styles VERIFIED');
+
           for(const method of ['GET','POST']) {
             const response=await fetch(api+'/api/grab-loadout',{
               method,
               headers:{Origin:site,...(method==='POST'?{'Content-Type':'application/json'}:{})},
               ...(method==='POST'?{body:'{}'}:{}),
-              signal:AbortSignal.timeout(30000),
+              signal:AbortSignal.timeout(90000),
             });
             assert.equal(response.status,401,'Protected '+method+' endpoint must require authentication');
             assert.equal(response.headers.get('access-control-allow-origin'),site,'CORS origin mismatch');
-            const body=await response.json();
-            assert.match(body.error||'',/auth/i);
-            console.log('LIVE',method,'/api/grab-loadout',response.status,'with valid origin CORS');
+            assert.match((await response.json()).error||'',/auth/i);
+            console.log('LIVE',method,'/api/grab-loadout 401 with steez8.me CORS');
           }
-          console.log('STEEZ8 Grab Lab production script, physics, 3D and API verification PASSED');
+          console.log('STEEZ8 Grab Lab production verification PASSED');
           NODE
