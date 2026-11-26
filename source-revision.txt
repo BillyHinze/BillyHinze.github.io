@@ -1,2 +1,2 @@
 STEEZ8 source: BillyHinze/steez8
-Commit: 3b632e794d1fa987907f28cdb299bbf5faf1c3fe
+Commit: 248492cae19c7f2bd0593537af411784e533854b
